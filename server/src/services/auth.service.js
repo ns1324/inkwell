@@ -40,6 +40,7 @@ export const AuthService = {
         }
 
         const tokens = TokenService.issueTokens(user);
+        
         return { user, ...tokens };
     },
 
@@ -55,7 +56,10 @@ export const AuthService = {
         }
 
         const tokens = TokenService.issueTokens(user);
-        return { user, ...tokens };
+
+        const { passwordHash, ...safeUser } = user;
+
+        return { user: safeUser, ...tokens };
     },
 };
 
