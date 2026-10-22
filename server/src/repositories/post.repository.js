@@ -9,50 +9,21 @@ export const PostRepository = {
         });
     },
 
-     createWithTags({
-        authorId,
-        title,
-        body,
-        status,
-        publishedAt,
-        tagNames = [],
-    }) {
-        return prisma.$transaction(async (tx) => {
-            const post = await tx.post.create({
-                data: {
-                    authorId,
-                    title,
-                    body,
-                    status,
-                    publishedAt,
+    createWithTags({ authorId, title, body, status, publishedAt, tagNames }) {
+        return prisma.post.create({
+            data: {
+                authorId,
+                title,
+                body,
+                status,
+                publishedAt,
+                tags: {
+                    create: tagNames.map((name) => ({
+                        tag: { connectOrCreate: { where: { name }, create: { name } } },
+                    })),
                 },
-            });
-
-            for (const name of tagNames) {
-                const tag = await tx.tag.upsert({
-                    where: { name },
-                    update: {},
-                    create: { name },
-                });
-
-                await tx.postTag.create({
-                    data: {
-                        postId: post.id,
-                        tagId: tag.id,
-                    },
-                });
-            }
-
-            return tx.post.findUnique({
-                where: { id: post.id },
-                include: {
-                    tags: {
-                        include: {
-                            tag: true,
-                        },
-                    },
-                },
-            });
+            },
+            include: { tags: { include: { tag: true } } },
         });
     },
 
@@ -71,18 +42,16 @@ export const PostRepository = {
         const where = {
             status: "PUBLISHED",
             OR: [
-            { title: { contains: query, mode: "insensitive" } },
-            { body: { contains: query, mode: "insensitive" } },
+                { title: { contains: query, mode: "insensitive" } },
+                { body: { contains: query, mode: "insensitive" } },
             ],
         };
-
         const rows = await prisma.post.findMany({
             where,
             orderBy: { publishedAt: "desc" },
             skip: (page - 1) * pageSize,
             take: pageSize + 1,
         });
-
         const hasMore = rows.length > pageSize;
         return { posts: rows.slice(0, pageSize), hasMore };
     },
